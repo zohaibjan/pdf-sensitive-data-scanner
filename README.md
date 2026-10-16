@@ -1,7 +1,7 @@
-# file_flag
+# PDF Sensitive-Data Scanner
 
-Sample a large document repository, scan the sampled PDFs for **valid Australian
-Tax File Numbers (TFNs)** — and optionally other PII / government identifiers —
+Sample a large document repository, scan the sampled PDFs for **checksum-valid Australian
+Tax File Number (TFN) candidates** — and optionally other PII / government identifiers —
 and copy any flagged files into an output directory. Built to be **scalable,
 multi-threaded and configuration-driven**.
 
@@ -14,7 +14,7 @@ It catches sensitive data in three forms:
    run through Tesseract **OCR**.
 
 A number is only flagged as a TFN if it passes the official ATO weighted
-**modulus-11 checksum**, so random 9-digit numbers don't cause false positives.
+**modulus-11 checksum**, which reduces accidental matches. A passing checksum does not establish that a number was issued, and false positives and false negatives remain possible.
 
 ---
 
@@ -39,7 +39,7 @@ repository/  ──►  stratified sampler  ──►  thread pool  ──►  d
 ## Install
 
 ```bash
-python -m pip install -r requirements.txt   # or: pip install -e .[dev]
+python -m pip install -e '.[dev]'
 ```
 
 OCR (for scanned PDFs) additionally needs the Tesseract binary:
@@ -76,8 +76,7 @@ python -m file_flag ./sample_repo -c config/scan_config.yaml
 python -m file_flag ./sample_repo -c config/scan_config.yaml --dry-run
 ```
 
-Run from the repo root, or `pip install -e .` to get the `file_flag`
-command on your PATH.
+Install the package with `pip install -e .` (or the development install above) before using the module or the `file_flag` command.
 
 ### Useful CLI flags
 
