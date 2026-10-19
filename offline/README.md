@@ -1,6 +1,6 @@
 # Offline install bundle (Windows x86_64, Python 3.11)
 
-This folder lets you install **file_flag** on a machine with **no internet**.
+This folder lets you install **file_flag 0.1.1** on a machine with **no internet**.
 Everything needed — the app and all its Python dependencies — is pre-downloaded
 as `.whl` files in `wheels/`.
 
@@ -30,7 +30,7 @@ That runs, fully offline:
 
 ```bat
 python -m pip install --no-index --find-links wheels --upgrade pip setuptools wheel
-python -m pip install --no-index --find-links wheels file_flag
+python -m pip install --no-index --find-links wheels file_flag==0.1.1
 ```
 
 Verify:
@@ -42,7 +42,7 @@ python -m file_flag --help
 ### Manual one-liner (equivalent)
 
 ```bat
-pip install --no-index --find-links "C:\path\to\offline\wheels" file_flag
+pip install --no-index --find-links "C:\path\to\offline\wheels" file_flag==0.1.1
 ```
 
 `--no-index` tells pip not to contact PyPI; `--find-links` points it at the
@@ -79,3 +79,5 @@ PLATFORM=macosx_11_0_arm64    PYVER=311 ./build_bundle.sh   # macOS Apple Silico
 ```
 
 Then copy the refreshed `offline/` folder to the client.
+
+The bundled application wheel is rebuilt from source version 0.1.1. The wheel contents are checked in CI. Installation on a real offline Windows machine and native OCR remain separate acceptance checks.

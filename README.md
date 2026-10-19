@@ -3,7 +3,7 @@
 Sample a large document repository, scan the sampled PDFs for **checksum-valid Australian
 Tax File Number (TFN) candidates** — and optionally other PII / government identifiers —
 and copy any flagged files into an output directory. Built to be **scalable,
-multi-threaded and configuration-driven**.
+process-isolated and configuration-driven**.
 
 It catches sensitive data in three forms:
 
@@ -21,7 +21,7 @@ A number is only flagged as a TFN if it passes the official ATO weighted
 ## How it works
 
 ```
-repository/  ──►  stratified sampler  ──►  thread pool  ──►  detectors  ──►  report + flagged/
+repository/  ──►  stratified sampler  ──►  process pool  ──►  detectors  ──►  report + flagged/
  (folders &       (% of files from        (N workers)      (tfn/pii/gri)     output dir
   subfolders)      each folder)
 ```
@@ -30,9 +30,7 @@ repository/  ──►  stratified sampler  ──►  thread pool  ──►  d
   sampled from *each* folder, so one huge folder can't dominate the sample.
 * **Pluggable detectors** — enabled/disabled purely from YAML (`tfn`, `pii`,
   `gri`). Adding a new detector is a single registry entry.
-* **Multi-threaded** — a `ThreadPoolExecutor` scans many PDFs concurrently;
-  PyMuPDF and the OCR subprocess release the GIL, so threads scale well for this
-  I/O- and native-bound workload.
+* **Process isolation** — a `ProcessPoolExecutor` opens each PDF inside its own worker process. PyMuPDF does not support concurrent threads. A bounded pending queue limits orchestration overhead; scan results are still retained in memory.
 
 ---
 
@@ -83,7 +81,7 @@ Install the package with `pip install -e .` (or the development install above) b
 | Flag | Effect |
 |------|--------|
 | `--percent N` | override sampling percentage |
-| `--threads N` | override worker thread count |
+| `--threads N` | override worker process count (legacy flag name) |
 | `--flagged-dir DIR` | where flagged files are copied/moved |
 | `--report PATH` | JSON report location |
 | `--dry-run` | print the sampling plan only |
@@ -117,7 +115,7 @@ ocr:
   language: eng
 
 processing:
-  threads: 8
+  threads: 8                 # legacy setting: number of worker processes
 
 output:
   flagged_dir: ./output/flagged
@@ -151,8 +149,8 @@ A file is **flagged** if *any* enabled detector produces a finding.
 
 * Flagged PDFs are copied (or moved) into `flagged_dir`, optionally mirroring the
   original folder tree.
-* A JSON report (`output/report.json`) records, per flagged file: the detector,
-  masked value, page number, surrounding context, and whether the value was
+* A JSON report (`output/report.json`) records, per flagged or failed file: the detector,
+  masked value, page number, suppressed context by default, and whether the value was
   `redacted` or recovered `via_ocr`.
 
 ```json
@@ -169,7 +167,7 @@ A file is **flagged** if *any* enabled detector produces a finding.
 }
 ```
 
-Values are masked by default; use `--no-mask` only in a secure environment.
+Values are masked and context is suppressed by default; filenames, paths and error messages remain visible. Use synthetic or authorised files and protect all outputs. Use `--no-mask` only in a secure environment.
 
 ---
 
@@ -182,7 +180,7 @@ src/file_flag/
   sampler.py        # stratified per-folder sampling
   extraction.py     # text extraction, OCR fallback, redaction detection
   scanner.py        # scan one PDF -> ScanResult
-  pipeline.py       # thread pool + flagged-file routing
+  pipeline.py       # process pool + flagged-file routing
   reporting.py      # summary + JSON report
   detectors/        # tfn, pii, gri  (+ pluggable registry)
 tools/
@@ -208,9 +206,18 @@ PDFs; scanned PDFs exercise OCR when Tesseract is installed).
 ## Notes & extension points
 
 * **Scaling further** — for very large repositories the work is embarrassingly
-  parallel; swap `ThreadPoolExecutor` for `ProcessPoolExecutor` (or shard the
-  sampled list across machines) if you become CPU-bound on OCR.
+  parallel; the scanner already uses isolated processes. Benchmark worker counts on your hardware; OCR and large pages can consume substantial memory. Shard workloads for larger deployments.
 * **New detector** — implement `Detector.detect()` in `detectors/`, add it to the
   `REGISTRY`, and switch it on in the YAML. No other code changes needed.
 * **Security** — reports mask values by default; treat `flagged_dir` and any
   `--no-mask` report as sensitive.
+
+## Concurrency and privacy revision
+
+Version 0.1.1 uses spawned processes following [PyMuPDF concurrency guidance](https://pymupdf.readthedocs.io/en/latest/recipes-multiprocessing.html). The `--threads` flag and `processing.threads` key remain compatible names for the process count. Use `1` for sequential execution. Python callers on Windows must invoke the pipeline under an `if __name__ == "__main__":` guard. The CLI already has that guard.
+
+Masked reports suppress the whole finding context so adjacent sensitive values are not exposed. `--no-mask` deliberately restores raw values and context. Failed files are included in JSON results so they can be investigated; a failure is not a clean scan.
+
+## Automated checks
+
+GitHub Actions runs offline regression checks on pushes and pull requests. These do not deploy the app, call paid AI services or establish model quality. 

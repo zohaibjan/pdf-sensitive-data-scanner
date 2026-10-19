@@ -31,6 +31,9 @@ class Finding:
         d = asdict(self)
         d["value"] = self.masked_value() if mask else self.raw_value
         d.pop("raw_value")
+        if mask:
+            # Context can repeat this value or contain other sensitive records.
+            d["context"] = "[REDACTED]" if self.context else ""
         return d
 
 
@@ -39,7 +42,7 @@ class Detector(ABC):
     """A detector inspects extracted text and yields :class:`Finding` objects.
 
     Detectors are deliberately stateless with respect to a single document so
-    one instance can be shared safely across worker threads.
+    each worker process can reuse one detector set.
     """
 
     name: str = "detector"

@@ -22,7 +22,7 @@ if errorlevel 1 goto :fail
 
 echo.
 echo [2/2] Installing file_flag and its dependencies...
-python -m pip install --no-index --find-links "%WHEELS%" file_flag
+python -m pip install --no-index --find-links "%WHEELS%" file_flag==0.1.1
 if errorlevel 1 goto :fail
 
 echo.

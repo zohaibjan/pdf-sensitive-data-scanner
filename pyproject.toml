@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "file_flag"
-version = "0.1.0"
-description = "Stratified sampling and multi-threaded TFN/PII/GRI detection in PDFs"
+version = "0.1.1"
+description = "Stratified sampling and process-isolated TFN/PII/GRI detection in PDFs"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

@@ -28,7 +28,7 @@ def write_report(results: list[ScanResult], path: str | Path,
     report = {
         "summary": summarise(results),
         "sampling": extra or {},
-        "results": [r.to_dict(mask=mask) for r in results if r.flagged],
+        "results": [r.to_dict(mask=mask) for r in results if r.flagged or r.error],
     }
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(report, fh, indent=2)

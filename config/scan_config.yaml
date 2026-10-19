@@ -29,7 +29,7 @@ ocr:
   language: eng
 
 processing:
-  threads: 8                 # worker threads for concurrent scanning
+  threads: 8                # legacy key: isolated worker processes
 
 output:
   flagged_dir: ./output/flagged

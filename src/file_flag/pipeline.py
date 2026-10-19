@@ -1,10 +1,10 @@
-"""Multi-threaded orchestration: sample -> scan -> flag -> report."""
+"""Process-isolated orchestration: sample -> scan -> flag -> report."""
 from __future__ import annotations
 
 import logging
 import shutil
-import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor, wait, FIRST_COMPLETED
 from pathlib import Path
 
 from .config import Config
@@ -35,39 +35,70 @@ def _route_flagged(result: ScanResult, repo_root: Path, out_cfg: dict) -> None:
         shutil.copy2(str(result.path), str(dest))
 
 
+_WORKER_DETECTORS = None
+
+
+def _init_worker(detector_config: dict) -> None:
+    global _WORKER_DETECTORS
+    _WORKER_DETECTORS = build_detectors(detector_config)
+
+
+def _scan_worker(path: Path, ocr_cfg: dict) -> ScanResult:
+    return scan_file(path, _WORKER_DETECTORS, ocr_cfg)
+
+
 def run(files: list[Path], repo_root: Path, config: Config,
         progress=None) -> list[ScanResult]:
-    """Scan ``files`` concurrently and route flagged files. Returns all results.
+    """Scan PDFs in isolated processes; route files and report progress in parent.
 
-    A fresh detector set is built per worker thread because detector instances,
-    while logically stateless per document, are cheap and this avoids any
-    accidental shared mutable state.
+    ``processing.threads`` is retained as a compatibility setting for the number
+    of worker processes. At most twice that many tasks are pending, avoiding a
+    future object for every PDF in large repositories. Results remain in memory.
     """
-    threads = int(config.processing.get("threads", 8))
-    ocr_cfg = config.ocr
+    workers = int(config.processing.get("threads", 8))
+    if workers < 1:
+        raise ValueError("processing.threads must be >= 1")
     results: list[ScanResult] = []
-    lock = threading.Lock()
-    done = 0
 
-    # Detectors are stateless across documents, so one shared set is safe and
-    # avoids rebuilding regexes for every file.
-    detectors = build_detectors(config.detectors)
+    def collect(result):
+        if result.flagged:
+            try:
+                _route_flagged(result, repo_root, config.output)
+            except Exception as exc:
+                log.warning("Failed to route %s: %s", result.path, exc)
+        results.append(result)
+        if progress:
+            progress(len(results), len(files), result)
 
-    def work(path: Path) -> ScanResult:
-        return scan_file(path, detectors, ocr_cfg)
+    if not files:
+        return results
+    if workers == 1:
+        detectors = build_detectors(config.detectors)
+        for path in files:
+            collect(scan_file(path, detectors, config.ocr))
+        return results
 
-    with ThreadPoolExecutor(max_workers=threads) as pool:
-        futures = {pool.submit(work, f): f for f in files}
-        for fut in as_completed(futures):
-            result = fut.result()
-            if result.flagged:
+    # Spawn never inherits an open MuPDF document or the parent's native state.
+    with ProcessPoolExecutor(max_workers=workers,
+            mp_context=multiprocessing.get_context("spawn"),
+            initializer=_init_worker, initargs=(config.detectors,)) as pool:
+        source = iter(files)
+        pending = {}
+        def replenish():
+            while len(pending) < workers * 2:
+                path = next(source, None)
+                if path is None:
+                    break
+                pending[pool.submit(_scan_worker, path, config.ocr)] = path
+        replenish()
+        while pending:
+            completed, _ = wait(pending, return_when=FIRST_COMPLETED)
+            for future in completed:
+                path = pending.pop(future)
                 try:
-                    _route_flagged(result, repo_root, config.output)
+                    result = future.result()
                 except Exception as exc:
-                    log.warning("Failed to route %s: %s", result.path, exc)
-            with lock:
-                results.append(result)
-                done += 1
-                if progress:
-                    progress(done, len(files), result)
+                    result = ScanResult(path=Path(path), error=f"worker failed: {exc}")
+                collect(result)
+            replenish()
     return results

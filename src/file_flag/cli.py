@@ -24,7 +24,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--percent", type=float, default=None,
                    help="Override sampling.percent")
     p.add_argument("--threads", type=int, default=None,
-                   help="Override processing.threads")
+                   help="Worker process count (legacy processing.threads setting)")
     p.add_argument("--flagged-dir", default=None,
                    help="Override output.flagged_dir")
     p.add_argument("--report", default=None, help="Override output.report path")
