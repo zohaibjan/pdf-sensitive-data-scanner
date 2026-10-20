@@ -17,7 +17,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="file_flag",
         description="Sample a document repository and flag PDFs containing "
-                    "valid TFNs / PII / government identifiers.",
+                    "valid TFNs / PII / additional identifiers.",
     )
     p.add_argument("repository", help="Root folder of the document repository")
     p.add_argument("-c", "--config", help="Path to YAML config", default=None)

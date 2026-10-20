@@ -1,4 +1,4 @@
-"""Government Related Identifiers (GRI): Medicare numbers and ABNs.
+"""Additional identifier checks (GRI): Medicare numbers and ABNs.
 
 Both carry published checksums so we can flag genuine identifiers and skip
 random number sequences.

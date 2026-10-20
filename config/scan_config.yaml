@@ -10,7 +10,7 @@ detectors:
   pii:
     enabled: false
     types: [email, phone_au, credit_card]
-  gri:                       # Government Related Identifiers
+  gri:                       # Additional identifier checks
     enabled: false
     types: [medicare, abn]
 

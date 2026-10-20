@@ -1,7 +1,7 @@
 # PDF Sensitive-Data Scanner
 
 Sample a large document repository, scan the sampled PDFs for **checksum-valid Australian
-Tax File Number (TFN) candidates** — and optionally other PII / government identifiers —
+Tax File Number (TFN) candidates** — and optionally other PII / additional identifiers —
 and copy any flagged files into an output directory. Built to be **scalable,
 process-isolated and configuration-driven**.
 
@@ -99,7 +99,7 @@ detectors:
   pii:
     enabled: false
     types: [email, phone_au, credit_card]
-  gri:                       # Government Related Identifiers
+  gri:                       # Additional identifier checks
     enabled: false
     types: [medicare, abn]
 
@@ -214,7 +214,7 @@ PDFs; scanned PDFs exercise OCR when Tesseract is installed).
 
 ## Concurrency and privacy revision
 
-Version 0.1.1 uses spawned processes following [PyMuPDF concurrency guidance](https://pymupdf.readthedocs.io/en/latest/recipes-multiprocessing.html). The `--threads` flag and `processing.threads` key remain compatible names for the process count. Use `1` for sequential execution. Python callers on Windows must invoke the pipeline under an `if __name__ == "__main__":` guard. The CLI already has that guard.
+Version 0.1.2 uses spawned processes following [PyMuPDF concurrency guidance](https://pymupdf.readthedocs.io/en/latest/recipes-multiprocessing.html). The `--threads` flag and `processing.threads` key remain compatible names for the process count. Use `1` for sequential execution. Python callers on Windows must invoke the pipeline under an `if __name__ == "__main__":` guard. The CLI already has that guard.
 
 Masked reports suppress the whole finding context so adjacent sensitive values are not exposed. `--no-mask` deliberately restores raw values and context. Failed files are included in JSON results so they can be investigated; a failure is not a clean scan.
 

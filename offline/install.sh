@@ -7,5 +7,5 @@ WHEELS="$(cd "$(dirname "$0")/wheels" && pwd)"
 
 echo "Using wheels in: $WHEELS"
 python3 -m pip install --no-index --find-links "$WHEELS" --upgrade pip setuptools wheel
-python3 -m pip install --no-index --find-links "$WHEELS" file_flag==0.1.1
+python3 -m pip install --no-index --find-links "$WHEELS" file_flag==0.1.2
 echo "Done. Verify with: python3 -m file_flag --help"
